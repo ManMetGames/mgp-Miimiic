@@ -41,6 +41,9 @@ class AMechanicsCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* GrabAction;
 
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* ScrollAction;
+
 protected:
 
 	/** Jump Input Action */
@@ -88,6 +91,8 @@ protected:
 
 	void StartGrab();
 	void StopGrab();
+
+	void ScrollInput(const FInputActionValue& Value);
 
 protected:
 

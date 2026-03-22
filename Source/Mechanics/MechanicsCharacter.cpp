@@ -66,6 +66,8 @@ void AMechanicsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 		EnhancedInputComponent->BindAction(GrabAction, ETriggerEvent::Started, this, &AMechanicsCharacter::StartGrab);
 		EnhancedInputComponent->BindAction(GrabAction, ETriggerEvent::Completed, this, &AMechanicsCharacter::StopGrab);
+
+		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &AMechanicsCharacter::ScrollInput);
 	}
 	else
 	{
@@ -133,4 +135,9 @@ void AMechanicsCharacter::StartGrab()
 void AMechanicsCharacter::StopGrab()
 {
 	GrabComponent->ReleaseGrab();
+}
+void AMechanicsCharacter::ScrollInput(const FInputActionValue& Value)
+{
+	float ScrollValue = Value.Get<float>();
+	GrabComponent->AdjustGrabDistance(ScrollValue);
 }
