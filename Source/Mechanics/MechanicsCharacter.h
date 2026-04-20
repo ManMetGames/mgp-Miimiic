@@ -37,6 +37,12 @@ class AMechanicsCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	UGrabComponent* GrabComponent;
 
+	// Input Actions
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* RotateHeldAction;
+
+	
+
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* GrabAction;
@@ -91,6 +97,9 @@ protected:
 
 	void StartGrab();
 	void StopGrab();
+	
+	void StartRotate();
+	void StopRotate();
 
 	void ScrollInput(const FInputActionValue& Value);
 
