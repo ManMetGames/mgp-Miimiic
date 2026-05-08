@@ -14,6 +14,7 @@ void UGrabComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    // find components on the owner rather than requiring manual assignment
     PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
     if (!PhysicsHandle)
     {
@@ -48,8 +49,14 @@ void UGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
         {
             UPrimitiveComponent* HitComp = Hit.GetComponent();
 
+            // clear outline if we moved to a different object
             if (HoveredComponent != nullptr && HoveredComponent != HitComp)
             {
+                UMeshComponent* OldMesh = Cast<UMeshComponent>(HoveredComponent);
+                if (OldMesh != nullptr)
+                {
+                    OldMesh->SetOverlayMaterial(nullptr);
+                }
                 HoveredComponent = nullptr;
             }
 
@@ -70,6 +77,7 @@ void UGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
         }
         else
         {
+            // nothing in range, clear outline
             if (HoveredComponent != nullptr)
             {
                 UMeshComponent* Mesh = Cast<UMeshComponent>(HoveredComponent);
@@ -101,6 +109,7 @@ void UGrabComponent::TryGrab()
         if (HitComponent != nullptr && HitComponent->IsSimulatingPhysics())
         {
             HeldActor = Hit.GetActor();
+            // keep rotation so it doesnt snap when picked up
             HeldObjectRotation = HitComponent->GetComponentRotation();
 
             PhysicsHandle->GrabComponentAtLocationWithRotation(
@@ -135,6 +144,7 @@ void UGrabComponent::ApplyWeightSimulation(UPrimitiveComponent* GrabbedComponent
 
     float Mass = GrabbedComponent->GetMass();
 
+    // t is 0 at light threshold, 1 at heavy
     float t = FMath::GetRangePct(LightMassThreshold, HeavyMassThreshold, Mass);
     if (t < 0.f) t = 0.f;
     if (t > 1.f) t = 1.f;
@@ -195,6 +205,7 @@ void UGrabComponent::UpdateHeldObject()
     FVector TargetLocation = PlayerCamera->GetComponentLocation()
         + PlayerCamera->GetForwardVector() * GrabDistance;
 
+    // use stored rotation when rotating, otherwise follow camera
     FRotator TargetRotation;
     if (bIsRotating)
     {
