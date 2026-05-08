@@ -12,17 +12,14 @@
 
 AMechanicsCharacter::AMechanicsCharacter()
 {
-    // Set size for collision capsule
     GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
-    // Create the first person mesh that will be viewed only by this character's owner
     FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("First Person Mesh"));
     FirstPersonMesh->SetupAttachment(GetMesh());
     FirstPersonMesh->SetOnlyOwnerSee(true);
     FirstPersonMesh->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::FirstPerson;
     FirstPersonMesh->SetCollisionProfileName(FName("NoCollision"));
 
-    // Create the Camera Component
     FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("First Person Camera"));
     FirstPersonCameraComponent->SetupAttachment(FirstPersonMesh, FName("head"));
     FirstPersonCameraComponent->SetRelativeLocationAndRotation(FVector(-2.8f, 5.89f, 0.0f), FRotator(0.0f, 90.0f, -90.0f));
@@ -32,16 +29,14 @@ AMechanicsCharacter::AMechanicsCharacter()
     FirstPersonCameraComponent->FirstPersonFieldOfView = 70.0f;
     FirstPersonCameraComponent->FirstPersonScale = 0.6f;
 
-    // Configure mesh
     GetMesh()->SetOwnerNoSee(true);
     GetMesh()->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::WorldSpaceRepresentation;
     GetCapsuleComponent()->SetCapsuleSize(34.0f, 96.0f);
 
-    // Configure character movement
     GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
     GetCharacterMovement()->AirControl = 0.5f;
 
-    // Create Grab Component and Physics Handle
+    // grab component handles object pickup, physics handle is found by it in BeginPlay
     GrabComponent = CreateDefaultSubobject<UGrabComponent>(TEXT("GrabComponent"));
     UPhysicsHandleComponent* Handle = CreateDefaultSubobject<UPhysicsHandleComponent>(TEXT("PhysicsHandle"));
     Handle->InterpolationSpeed = 50.f;
@@ -51,25 +46,21 @@ void AMechanicsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 {
     if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
-        // Jumping
         EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AMechanicsCharacter::DoJumpStart);
         EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMechanicsCharacter::DoJumpEnd);
 
-        // Moving
         EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMechanicsCharacter::MoveInput);
 
-        // Looking — both gamepad and mouse feed into LookInput
         EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMechanicsCharacter::LookInput);
         EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AMechanicsCharacter::LookInput);
 
-        // Grab (hold to grab, release to drop)
+        // hold to grab, release to drop
         EnhancedInputComponent->BindAction(GrabAction, ETriggerEvent::Started, this, &AMechanicsCharacter::StartGrab);
         EnhancedInputComponent->BindAction(GrabAction, ETriggerEvent::Completed, this, &AMechanicsCharacter::StopGrab);
 
-        // Scroll — adjust held object distance
         EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &AMechanicsCharacter::ScrollInput);
 
-        // Rotate held object — R held redirects mouse into object rotation
+        // R held redirects mouse into object rotation
         EnhancedInputComponent->BindAction(RotateHeldAction, ETriggerEvent::Started, this, &AMechanicsCharacter::StartRotate);
         EnhancedInputComponent->BindAction(RotateHeldAction, ETriggerEvent::Completed, this, &AMechanicsCharacter::StopRotate);
     }
@@ -89,8 +80,7 @@ void AMechanicsCharacter::LookInput(const FInputActionValue& Value)
 {
     FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-    // If R is held and we have a grabbed object, redirect mouse delta into object rotation
-    // instead of moving the camera — this is the key input intercept
+    // steal mouse delta for object rotation if R is held
     if (GrabComponent && GrabComponent->IsRotating())
     {
         GrabComponent->AddRotationInput(LookAxisVector.X, LookAxisVector.Y);
@@ -112,8 +102,7 @@ void AMechanicsCharacter::DoAim(float Yaw, float Pitch)
 
 void AMechanicsCharacter::DoMove(float Right, float Forward)
 {
-    if (GetController())
-    {
+    if (GetController()) {
         AddMovementInput(GetActorRightVector(), Right);
         AddMovementInput(GetActorForwardVector(), Forward);
     }
@@ -147,7 +136,6 @@ void AMechanicsCharacter::ScrollInput(const FInputActionValue& Value)
 
 void AMechanicsCharacter::StartRotate()
 {
-    // Only activates if already holding an object — GrabComponent guards this internally
     GrabComponent->StartRotating();
 }
 

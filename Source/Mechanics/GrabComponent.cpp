@@ -1,6 +1,7 @@
 #include "GrabComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
+#include "Components/MeshComponent.h"
 
 UGrabComponent::UGrabComponent()
 {
@@ -34,15 +35,50 @@ void UGrabComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
     {
         UpdateHeldObject();
     }
-    else
-    {
+    else {
         FHitResult Hit;
-        if (DoLineTrace(Hit))
+
+        FVector Start = PlayerCamera->GetComponentLocation();
+        FVector End = Start + PlayerCamera->GetForwardVector() * GrabReach;
+        FCollisionQueryParams Params;
+        Params.AddIgnoredActor(GetOwner());
+        bool bGotHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+
+        if (bGotHit)
         {
-            CurrentGrabState = EGrabState::Hovering;
+            UPrimitiveComponent* HitComp = Hit.GetComponent();
+
+            if (HoveredComponent != nullptr && HoveredComponent != HitComp)
+            {
+                HoveredComponent = nullptr;
+            }
+
+            if (HitComp != nullptr && HitComp->IsSimulatingPhysics())
+            {
+                UMeshComponent* NewMesh = Cast<UMeshComponent>(HitComp);
+                if (NewMesh != nullptr)
+                {
+                    NewMesh->SetOverlayMaterial(HoverOutlineMaterial);
+                }
+                HoveredComponent = HitComp;
+                CurrentGrabState = EGrabState::Hovering;
+            }
+            else
+            {
+                CurrentGrabState = EGrabState::Idle;
+            }
         }
         else
         {
+            if (HoveredComponent != nullptr)
+            {
+                UMeshComponent* Mesh = Cast<UMeshComponent>(HoveredComponent);
+                if (Mesh != nullptr)
+                {
+                    Mesh->SetOverlayMaterial(nullptr);
+                }
+                HoveredComponent = nullptr;
+            }
             CurrentGrabState = EGrabState::Idle;
         }
     }
@@ -53,15 +89,18 @@ void UGrabComponent::TryGrab()
     if (CurrentGrabState == EGrabState::Grabbed) return;
     if (!PhysicsHandle || !PlayerCamera) return;
 
+    FVector Start = PlayerCamera->GetComponentLocation();
+    FVector End = Start + PlayerCamera->GetForwardVector() * GrabReach;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(GetOwner());
+
     FHitResult Hit;
-    if (DoLineTrace(Hit))
+    if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
     {
         UPrimitiveComponent* HitComponent = Hit.GetComponent();
-        if (HitComponent && HitComponent->IsSimulatingPhysics())
+        if (HitComponent != nullptr && HitComponent->IsSimulatingPhysics())
         {
             HeldActor = Hit.GetActor();
-
-            // Capture the object's current rotation so it doesn't snap on pickup
             HeldObjectRotation = HitComponent->GetComponentRotation();
 
             PhysicsHandle->GrabComponentAtLocationWithRotation(
@@ -71,37 +110,62 @@ void UGrabComponent::TryGrab()
                 HeldObjectRotation
             );
 
+            ApplyWeightSimulation(HitComponent);
+
+            if (HoveredComponent != nullptr)
+            {
+                UMeshComponent* Mesh = Cast<UMeshComponent>(HoveredComponent);
+                if (Mesh != nullptr)
+                {
+                    Mesh->SetOverlayMaterial(nullptr);
+                }
+                HoveredComponent = nullptr;
+            }
+
             CurrentGrabState = EGrabState::Grabbed;
-            UE_LOG(LogTemp, Log, TEXT("GrabComponent: Grabbed %s"), *HeldActor->GetName());
+            UE_LOG(LogTemp, Warning, TEXT("grabbed %s"), *HeldActor->GetName());
         }
     }
+}
+
+
+void UGrabComponent::ApplyWeightSimulation(UPrimitiveComponent* GrabbedComponent)
+{
+    if (PhysicsHandle == nullptr || GrabbedComponent == nullptr) return;
+
+    float Mass = GrabbedComponent->GetMass();
+
+    float t = FMath::GetRangePct(LightMassThreshold, HeavyMassThreshold, Mass);
+    if (t < 0.f) t = 0.f;
+    if (t > 1.f) t = 1.f;
+
+    float SpeedRange = HeavyInterpolationSpeed - LightInterpolationSpeed;
+    PhysicsHandle->InterpolationSpeed = LightInterpolationSpeed + SpeedRange * t;
 }
 
 void UGrabComponent::ReleaseGrab()
 {
     if (CurrentGrabState != EGrabState::Grabbed) return;
-    if (!PhysicsHandle) return;
+    if (PhysicsHandle == nullptr) return;
 
     PhysicsHandle->ReleaseComponent();
+    PhysicsHandle->InterpolationSpeed = LightInterpolationSpeed;
+
     HeldActor = nullptr;
     bIsRotating = false;
     HeldObjectRotation = FRotator::ZeroRotator;
     CurrentGrabState = EGrabState::Idle;
-
-    UE_LOG(LogTemp, Log, TEXT("GrabComponent: Released object"));
 }
 
 void UGrabComponent::AdjustGrabDistance(float ScrollValue)
 {
-    // Scroll is blocked while rotating so the two inputs don't conflict
     if (CurrentGrabState != EGrabState::Grabbed) return;
     if (bIsRotating) return;
 
-    GrabDistance = FMath::Clamp(
-        GrabDistance + ScrollValue * 50.f,
-        MinGrabDistance,
-        MaxGrabDistance
-    );
+    GrabDistance = GrabDistance + ScrollValue * 50.f;
+
+    if (GrabDistance < MinGrabDistance) GrabDistance = MinGrabDistance;
+    if (GrabDistance > MaxGrabDistance) GrabDistance = MaxGrabDistance;
 }
 
 void UGrabComponent::StartRotating()
@@ -117,40 +181,43 @@ void UGrabComponent::StopRotating()
 
 void UGrabComponent::AddRotationInput(float YawDelta, float PitchDelta)
 {
-    if (!bIsRotating) return;
     if (CurrentGrabState != EGrabState::Grabbed) return;
+    if (!bIsRotating) return;
 
-    // Yaw rotates around world Z, Pitch rotates around world Y
     HeldObjectRotation.Yaw += YawDelta * RotationSpeed;
     HeldObjectRotation.Pitch += PitchDelta * RotationSpeed;
 }
 
-bool UGrabComponent::DoLineTrace(FHitResult& OutHit)
-{
-    if (!PlayerCamera) return false;
-
-    FVector Start = PlayerCamera->GetComponentLocation();
-    FVector End = Start + PlayerCamera->GetForwardVector() * GrabReach;
-
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(GetOwner());
-
-    return GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, Params);
-}
-
 void UGrabComponent::UpdateHeldObject()
 {
-    if (!PhysicsHandle || !PlayerCamera) return;
+    if (PhysicsHandle == nullptr || PlayerCamera == nullptr) return;
 
     FVector TargetLocation = PlayerCamera->GetComponentLocation()
         + PlayerCamera->GetForwardVector() * GrabDistance;
 
-    // When rotating: use accumulated HeldObjectRotation
-    // When idle:     follow the camera so the object feels "locked" to the view
-    FRotator TargetRotation = bIsRotating
-        ? HeldObjectRotation
-        : PlayerCamera->GetComponentRotation();
+    FRotator TargetRotation;
+    if (bIsRotating)
+    {
+        TargetRotation = HeldObjectRotation;
+    }
+    else
+    {
+        TargetRotation = PlayerCamera->GetComponentRotation();
+    }
 
     PhysicsHandle->SetTargetLocation(TargetLocation);
     PhysicsHandle->SetTargetRotation(TargetRotation);
+
+    // drop it if its stuck
+    if (PhysicsHandle->GetGrabbedComponent() != nullptr)
+    {
+        FVector ActualLocation = PhysicsHandle->GetGrabbedComponent()->GetComponentLocation();
+        float Stretch = FVector::Dist(ActualLocation, TargetLocation);
+
+        if (Stretch > MaxHoldStretchDistance)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("auto drop"));
+            ReleaseGrab();
+        }
+    }
 }

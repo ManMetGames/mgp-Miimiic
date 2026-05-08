@@ -56,6 +56,9 @@ private:
     bool DoLineTrace(FHitResult& OutHit);
     void UpdateHeldObject();
 
+    // Applies an interpolation speed to the physics handle based on the grabbed object's mass
+    void ApplyWeightSimulation(UPrimitiveComponent* GrabbedComponent);
+
     UPROPERTY()
     UPhysicsHandleComponent* PhysicsHandle;
 
@@ -73,6 +76,10 @@ private:
     UPROPERTY(VisibleAnywhere, Category = "Grab|State")
     FRotator HeldObjectRotation = FRotator::ZeroRotator;
 
+    // Tracks whichever component is currently outlined so we can clear it cleanly
+    UPROPERTY()
+    UPrimitiveComponent* HoveredComponent = nullptr;
+
     UPROPERTY(EditAnywhere, Category = "Grab|Settings")
     float GrabDistance = 250.f;
 
@@ -88,6 +95,30 @@ private:
     // How fast the object rotates per unit of mouse delta
     UPROPERTY(EditAnywhere, Category = "Grab|Settings")
     float RotationSpeed = 5.f;
+
+    // If the held object drifts further than this from its target (e.g. stuck in a wall), auto-drop it
+    UPROPERTY(EditAnywhere, Category = "Grab|Settings")
+    float MaxHoldStretchDistance = 150.f;
+
+    // The outline material to display on hoverable objects
+    UPROPERTY(EditAnywhere, Category = "Grab|Settings")
+    UMaterialInterface* HoverOutlineMaterial = nullptr;
+
+    // Objects below this mass (kg) are considered light and respond quickly
+    UPROPERTY(EditAnywhere, Category = "Grab|Weight")
+    float LightMassThreshold = 20.f;
+
+    // Objects above this mass (kg) are considered heavy and respond sluggishly
+    UPROPERTY(EditAnywhere, Category = "Grab|Weight")
+    float HeavyMassThreshold = 60.f;
+
+    // Physics handle interpolation speed for light objects — snappy response
+    UPROPERTY(EditAnywhere, Category = "Grab|Weight")
+    float LightInterpolationSpeed = 50.f;
+
+    // Physics handle interpolation speed for heavy objects — sluggish response
+    UPROPERTY(EditAnywhere, Category = "Grab|Weight")
+    float HeavyInterpolationSpeed = 10.f;
 
     UPROPERTY()
     AActor* HeldActor;

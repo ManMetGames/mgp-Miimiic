@@ -1,14 +1,10 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #pragma once
-
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "GrabComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
-#include "MechanicsCharacter.generated.h"
-
+#include "MechanicsCharacter.generated.h"  // MUST always be the last include
 
 class UInputComponent;
 class USkeletalMeshComponent;
@@ -18,104 +14,75 @@ struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
-/**
- *  A basic first person character
- */
+// basic first person character
 UCLASS(abstract)
 class AMechanicsCharacter : public ACharacter
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-	/** Pawn mesh: first person view (arms; seen only by self) */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	USkeletalMeshComponent* FirstPersonMesh;
+    // first person arms mesh (self only)
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    USkeletalMeshComponent* FirstPersonMesh;
 
-	/** First person camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FirstPersonCameraComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    UCameraComponent* FirstPersonCameraComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
-	UGrabComponent* GrabComponent;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    UGrabComponent* GrabComponent;
 
-	// Input Actions
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* RotateHeldAction;
+    // Input Actions
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* RotateHeldAction;
 
-	
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* GrabAction;
 
-
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* GrabAction;
-
-	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* ScrollAction;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* ScrollAction;
 
 protected:
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* JumpAction;
 
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* JumpAction;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* MoveAction;
 
-	/** Move Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	UInputAction* MoveAction;
+    UPROPERTY(EditAnywhere, Category = "Input")
+    class UInputAction* LookAction;
 
-	/** Look Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	class UInputAction* LookAction;
-
-	/** Mouse Look Input Action */
-	UPROPERTY(EditAnywhere, Category ="Input")
-	class UInputAction* MouseLookAction;
-	
-public:
-	AMechanicsCharacter();
-
-protected:
-
-	/** Called from Input Actions for movement input */
-	void MoveInput(const FInputActionValue& Value);
-
-	/** Called from Input Actions for looking input */
-	void LookInput(const FInputActionValue& Value);
-
-	/** Handles aim inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoAim(float Yaw, float Pitch);
-
-	/** Handles move inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoMove(float Right, float Forward);
-
-	/** Handles jump start inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpStart();
-
-	/** Handles jump end inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpEnd();
-
-	void StartGrab();
-	void StopGrab();
-	
-	void StartRotate();
-	void StopRotate();
-
-	void ScrollInput(const FInputActionValue& Value);
-
-protected:
-
-	/** Set up input action bindings */
-	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
-	
+    UPROPERTY(EditAnywhere, Category = "Input")
+    class UInputAction* MouseLookAction;
 
 public:
+    AMechanicsCharacter();
 
-	/** Returns the first person mesh **/
-	USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
+protected:
+    void MoveInput(const FInputActionValue& Value);
+    void LookInput(const FInputActionValue& Value);
 
-	/** Returns first person camera component **/
-	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+    // these can be called from blueprint or UI as well as input actions
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoAim(float Yaw, float Pitch);
 
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoMove(float Right, float Forward);
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpStart();
+
+    UFUNCTION(BlueprintCallable, Category = "Input")
+    virtual void DoJumpEnd();
+
+    void StartGrab();
+    void StopGrab();
+    void StartRotate();
+    void StopRotate();
+    void ScrollInput(const FInputActionValue& Value);
+
+protected:
+    virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+
+public:
+    USkeletalMeshComponent* GetFirstPersonMesh() const { return FirstPersonMesh; }
+    UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 };
-
