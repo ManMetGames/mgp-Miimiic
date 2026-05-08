@@ -18,3 +18,5 @@ Video Link:
  https://mmutube.mmu.ac.uk/media/t/1_0uv6q53o
 
 https://youtu.be/BBCQzAPrJRc
+
+Finally, I'm not sure whether it counts but I didnit precisely mention the lerping or interpolation part in the video. It's mostly an editting mistake because I did many takes but I cant remake the video down to poor time management skills on my end. However, I am quite happy with that part of the code so I just wanted to mention it to be honest. 
